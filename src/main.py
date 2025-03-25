@@ -1,14 +1,22 @@
-import TkEasyGUI as sg
+# nuitka-project: --mode=app
+# nuitka-project: --enable-plugin=tk-inter
+# nuitka-project-if: {OS} == "Windows":
+#    nuitka-project: --windows-company-name="idunafu"
+#    nuitka-project: --windows-file-version="2.1.3.2"
+#    nuitka-project: --windows-product-name="MinecraftModsLocalizer"
+#    nuitka-project: --windows-product-version="2.1.3.2"
+#    nuitka-project: --copyright="MIT"
+
 from pathlib import Path
 import logging
 from datetime import datetime
+import TkEasyGUI as sg
 
 from provider import set_api_key, set_chunk_size, provide_chunk_size, set_model, provide_model, set_prompt, provide_prompt, set_log_directory, set_api_base, provide_api_base, set_temperature, provide_temperature, set_request_interval, provide_request_interval
 from mod import translate_from_jar
 from quests import translate_ftbquests, translate_betterquesting
 from patchouli import translate_patchouli
 from log import setup_logging
-from update import check_version
 
 
 if __name__ == '__main__':
