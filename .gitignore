@@ -234,3 +234,12 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,windows,linux
+
+logs/
+
+# nuitka
+*.build/
+*.dist/
+*.onefile-build/
+
+*.exe
