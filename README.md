@@ -1,10 +1,9 @@
-# MinecraftModsLocalizer ユーザーガイド
-![image1.png](/docs/assets/image1.png)
-![image2.png](/docs/assets/image2.png)
-![image3.png](/docs/assets/image3.png)
-![image4.png](/docs/assets/image4.png)
-![image5.png](/docs/assets/image5.png)
-![image6.png](/docs/assets/image6.png)
+# MinecraftModsLocalizer-fork
+# fork版の差異
+- uvを開発環境に
+- OpenAI互換API(Geminiなど)対応
+- Nuitkaでビルドし、高速化(今後)
+- レイアウト変更
 
 # **New!! 翻訳に使用するAIをChatGPTに変更しました！API料金が大幅に安くなり(ATM9で0.5ドル以下)、精度も格段に良くなりました！ファイル構造の崩壊、特殊文字無視とはバイバイ！**
 
