@@ -38,12 +38,54 @@ jobs:
           mode: app
           enable-plugins: tk-inter
 
+      # OSごとに出力ファイル名を設定
+      - name: Set Output Filename
+        id: set-filename
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            echo "FILENAME=minecraft-mods-localizer-windows.exe" >> $GITHUB_OUTPUT
+            cp build/*.exe build/minecraft-mods-localizer-windows.exe
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            echo "FILENAME=minecraft-mods-localizer-mac.bin" >> $GITHUB_OUTPUT
+            cp build/*.bin build/minecraft-mods-localizer-mac.bin
+          else
+            echo "FILENAME=minecraft-mods-localizer-linux.bin" >> $GITHUB_OUTPUT
+            cp build/*.bin build/minecraft-mods-localizer-linux.bin
+          fi
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }} Build
+          name: ${{ runner.os }}-Build
           path: |
             build/*.exe
             build/*.bin
             build/*.app/**/*
           include-hidden-files: true
+
+      # アーティファクトをリリースに追加
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build/${{ steps.set-filename.outputs.FILENAME }}
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

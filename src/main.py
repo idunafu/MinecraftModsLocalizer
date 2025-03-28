@@ -1,5 +1,3 @@
-# nuitka-project: --mode=app
-# nuitka-project: --enable-plugin=tk-inter
 # nuitka-project-if: {OS} == "Windows":
 #    nuitka-project: --windows-company-name="idunafu"
 #    nuitka-project: --windows-file-version="2.1.3.2"
