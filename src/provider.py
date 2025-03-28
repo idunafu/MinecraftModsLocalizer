@@ -4,21 +4,28 @@ MODEL = 'gpt-4o-mini-2024-07-18'
 API_BASE = None  # OpenAI互換APIのベースURL
 TEMPERATURE = 1.0  # デフォルト値として1.0を設定
 REQUEST_INTERVAL = 0.0  # APIリクエスト間隔（秒）- デフォルトは0秒（間隔なし）
-PROMPT = """You are a professional translator. Please translate the following English text into Japanese, one line at a time, step by step, in order
-Make sure that the number of lines of text before and after translation is the same. Never add or subtract extra lines.
+PROMPT = """You are a professional translator. Please translate the following English text into Japanese.
 
-# The number of lines of text to pass: {line_count}
+## Important Translation Rules
+- Translate line by line, strictly in order
+- Ensure the number of lines before and after translation matches exactly (do not add or remove lines)
+- Output only the translation result, without any greetings or explanations
 
-# Pay attention to the details below
-- Never include any greeting other than the translation result!
-- **Translate line by line, step by step, in order.**
-- **Make sure that the number of lines of text before and after translation is the same. Never add or subtract extra lines.**
-- **The meaning of the sentences before and after may be connected by chance, but if the lines are different, they are different sentences, so do not mix them up!**
-- **If multiple sentences are written on a single line, please translate as is, with all sentences on a single line.**
-- Proper nouns may be included and can be written in Katakana.
-- The backslash may be used as an escape character. Please maintain.
-- There might be programming variable characters such as %s, 1, or \\"; please retain these.
-- Do not edit any other characters that may look like special symbols.
+## Input Text Information
+- Number of lines: {line_count}
+
+## Detailed Translation Instructions
+- Treat sentences on different lines as separate, even if they seem contextually connected
+- If multiple sentences appear on a single line, translate them as one line
+- Use katakana for proper nouns when appropriate
+- Preserve programming variables (e.g., %s, $1, \") and special symbols as they are
+- Maintain backslashes (\\) as they may be used as escape characters
+- Do not edit any characters that appear to be special symbols
+- For idiomatic expressions, prioritize conveying the meaning over literal translation.
+- When appropriate, adapt cultural references to be more relevant to a Japanese audience.
+- The text is about Minecraft mods. Keep this context in mind while translating
+
+Once you receive the input text, proceed with the translation following these rules strictly.
 
 # Example
 
@@ -48,7 +55,7 @@ Add a new requirement group.Requirement groups can hold multiplerequirements and
 §zAND §rモードでは、すべての要件がTRUE（「はい、ロードする！」を意味します）を返す必要がありますが、§zOR §rモードでは、1つの要件だけがTRUEを返す必要があります。
 
 ### correct output
-新しい要件グループを追加します。要件グループは複数の要件を保持でき、基本的にそれらを1つの大きな要件にまとめます。要件グループには2つのモードがあります。§zAND §rモードでは、すべての要件がTRUE（「はい、ロードする！」を意味します）を返す必要がありますが、§zOR §rモードでは、1つの要件だけがTRUEを返す必要があります。"""
+新しい要件グループを追加します。要件グループは複数の要件を保持し、基本的にそれらを1つの大きな要件にまとめます。要件グループには2つのモードがあります。§zAND §rモードでは、すべての要件がTRUE（「はい、読み込みます！」という意味）を返す必要がありますが、§zOR §rモードでは、1つの要件だけがTRUEを返せば十分です。"""
 
 
 LOG_DIRECTORY = None
