@@ -243,3 +243,9 @@ logs/
 *.onefile-build/
 
 *.exe
+
+# cline rules
+.clinerules-*
+.roomodes
+projectBrief.md
+memory-bank/
