@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+from typing import Dict, List, Any
 
 from init import MAX_ATTEMPTS
 from chatgpt import translate_with_chatgpt
@@ -69,9 +70,93 @@ def create_map_with_none_filling(split_target, translated_split_target):
     return result_map
 
 
-def prepare_translation(targets):
-    split_targets = split_list(targets)  # ファイルを適切なサイズのチャンクに分割する関数
-    result_map = {}
+from typing import Dict, List, Any, Union
+
+def create_mod_aware_chunks(mod_data: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    MODごとにテキストをチャンク分割し、MOD区切りマーカーを追加する
+    
+    Args:
+        mod_data: {
+            "mod_name": {
+                "jar_path": str,
+                "texts": List[str],
+                "original_keys": List[str]
+            }
+        }
+    
+    Returns:
+        List of chunks, each either:
+        - {"mod_name": str, "texts": List[str], "is_full_mod": bool} (単一MODチャンク)
+        - {"mod_names": List[str], "texts": List[str], "headers": List[str]} (複数MODチャンク)
+    """
+    chunks: List[Dict[str, Any]] = []
+    current_chunk: Dict[str, Any] = {}  # 空の辞書で初期化
+    current_chunk_size = 0
+    chunk_size_limit = provide_chunk_size()
+    has_current_chunk = False  # 有効なデータがあるか追跡
+    
+    for mod_name, data in mod_data.items():
+        mod_texts = data["texts"]
+        mod_header = f"\n--- MOD: {mod_name} ---\n"
+        mod_header_size = 1  # ヘッダーは1行としてカウント
+        
+        # MODが大きい場合（単独でチャンクサイズを超える場合）
+        if len(mod_texts) > chunk_size_limit:
+            # MODを複数チャンクに分割
+            for i in range(0, len(mod_texts), chunk_size_limit):
+                chunk = mod_texts[i:i + chunk_size_limit]
+                chunk_data = {
+                    "mod_name": mod_name,
+                    "texts": chunk,
+                    "is_full_mod": False
+                }
+                chunks.append(chunk_data)
+        else:
+            # MODが小さい場合、現在のチャンクに追加可能かチェック
+            if current_chunk and current_chunk_size + len(mod_texts) + mod_header_size > chunk_size_limit:
+                chunks.append(current_chunk)
+                current_chunk = None
+                current_chunk_size = 0
+            
+            # MODを現在のチャンクに追加
+            if not current_chunk:  # 新しいチャンクの場合
+                current_chunk = {
+                    "mod_names": [mod_name],
+                    "texts": mod_texts,
+                    "headers": [mod_header]
+                }
+                current_chunk_size = len(mod_texts) + mod_header_size
+            else:  # 既存のチャンクに追加
+                current_chunk["mod_names"].append(mod_name)
+                current_chunk["texts"].extend(mod_texts)
+                current_chunk["headers"].append(mod_header)
+                current_chunk_size += len(mod_texts) + mod_header_size
+    
+    # 最後のチャンクを追加
+    if current_chunk:
+        chunks.append(current_chunk)
+    
+    return chunks
+
+def prepare_translation(mod_data: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
+    """
+    MODごとのデータを受け取り、翻訳を実行する
+    
+    Args:
+        mod_data: {
+            "mod_name": {
+                "jar_path": str,
+                "texts": List[str],
+                "original_keys": List[str]
+            }
+        }
+    
+    Returns:
+        翻訳結果のマップ {原文: 訳文}
+    """
+    chunks = create_mod_aware_chunks(mod_data)
+    result_map: Dict[str, str] = {}
     timeout = 60 * 3  # 3分のタイムアウト
     
     # リクエスト間隔の情報をログに出力
@@ -79,36 +164,63 @@ def prepare_translation(targets):
     if request_interval > 0:
         logging.info(f"Using request interval: {request_interval} seconds between API requests")
 
-    logging.info(f"The file contains {len(targets)} lines")
-    logging.info(f"Splitting the file into {len(split_targets)} chunks for translation...")
+    total_chunks = len(chunks)
+    total_mods = len(mod_data)
+    logging.info(f"Total MODs to translate: {total_mods}")
+    logging.info(f"Total chunks to process: {total_chunks}")
 
-    for index, split_target in enumerate(split_targets, 1):
-        logging.info(f"Translating chunk {index}/{len(split_targets)}...")
+    for index, chunk in enumerate(chunks, 1):
+        logging.info(f"Processing chunk {index}/{total_chunks}...")
+        
+        # チャンクのテキストを準備 (MODヘッダーを追加)
+        if isinstance(chunk.get("mod_names"), list):  # 複数MODがまとめられたチャンク
+            texts: List[str] = []
+            mod_sections: List[Dict[str, Any]] = []
+            
+            for mod_name, mod_texts, header in zip(
+                chunk["mod_names"],
+                chunk["texts"],
+                chunk["headers"]
+            ):
+                texts.append(header)
+                texts.extend(mod_texts)
+                mod_sections.append({
+                    "mod_name": mod_name,
+                    "texts": mod_texts,
+                    "header": header
+                })
+        else:  # 単一MODのチャンク
+            texts = [f"\n--- MOD: {chunk['mod_name']} ---\n"] + chunk["texts"]
+            mod_sections = [{
+                "mod_name": chunk["mod_name"],
+                "texts": chunk["texts"],
+                "header": f"\n--- MOD: {chunk['mod_name']} ---\n"
+            }]
 
         attempts = 0
-        while attempts < MAX_ATTEMPTS:  # 最大5回まで試行
-            translated_split_target = translate_with_chatgpt(split_target, timeout)
-            # 翻訳後の行数が一致すれば、マッピングしてループを抜ける
-            if len(split_target) == len(translated_split_target):
-                for key, value in zip(split_target, translated_split_target):
-                    result_map[key] = value
-                break
-            else:
-                filtered_split_target = [item for item in split_target if item.strip()]
-                filtered_translated_split_target = [item for item in translated_split_target if item.strip()]
-                if len(filtered_split_target) == len(filtered_translated_split_target):
-                    for key, value in zip(split_target, translated_split_target):
-                        result_map[key] = value
-                    break
+        while attempts < MAX_ATTEMPTS:
+            # 翻訳実行
+            translated_texts = translate_with_chatgpt(texts, timeout)
+            
+            if len(texts) != len(translated_texts):
+                attempts += 1
+                if attempts == MAX_ATTEMPTS:
+                    logging.error(f"Failed to translate chunk {index}/{total_chunks} after {MAX_ATTEMPTS} attempts")
+                continue
+                
+            # MODセクションごとに結果を処理
+            current_pos = 0
+            for section in mod_sections:
+                # ヘッダー分をスキップ
+                current_pos += 1
+                # 翻訳結果を取得
+                section_translated = translated_texts[current_pos:current_pos + len(section["texts"])]
+                # 元のテキストと翻訳結果をマッピング
+                for orig, trans in zip(section["texts"], section_translated):
+                    result_map[orig] = trans
+                current_pos += len(section["texts"])
+            
+            break  # 成功したらループを抜ける
 
-            if attempts == MAX_ATTEMPTS - 1:
-                logging.error(f"Failed to properly translate the segment: {index}/{len(split_targets)}")
-                logging.error(f"Original: {split_target}")
-                logging.error(f"Result: {translated_split_target}")
-                logging.error(f"The number of lines before and after translation does not match before: {len(split_target)}, after:{len(translated_split_target)}")
-
-
-            attempts += 1
-
-    logging.info(f"Translation completed!")
+    logging.info("Translation completed!")
     return result_map
