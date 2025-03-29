@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+from typing import Dict, List, Any
 
 from init import MAX_ATTEMPTS
 from chatgpt import translate_with_chatgpt
@@ -137,8 +138,6 @@ def create_mod_aware_chunks(mod_data: Dict[str, Dict[str, Any]]) -> List[Dict[st
         chunks.append(current_chunk)
     
     return chunks
-
-from typing import Dict, List, Any
 
 def prepare_translation(mod_data: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
     """
