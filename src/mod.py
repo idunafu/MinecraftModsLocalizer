@@ -68,7 +68,8 @@ def translate_from_jar():
     # リソースディレクトリの準備
     os.makedirs(os.path.join(RESOURCE_DIR, 'assets', 'japanese', 'lang'), exist_ok=True)
     
-    targets = {}
+    # MODごとのデータを保持する辞書
+    mod_data = {}
     jar_files = [f for f in os.listdir(MODS_DIR) if f.endswith('.jar')]
     
     if not jar_files:
@@ -110,28 +111,32 @@ def translate_from_jar():
             try:
                 result = future.result()
                 if result:
-                    targets.update(result)
+                    mod_name = result["mod_name"]
+                    mod_data[mod_name] = {
+                        "jar_path": result["jar_path"],
+                        "texts": result["texts"],
+                        "original_keys": list(result["texts"])  # 元のキーを保持
+                    }
             except Exception as e:
                 logging.error(f"Error processing {futures[future]}: {str(e)}")
 
     try:
-        # 翻訳実行
-        translated_map = prepare_translation(list(targets.values()))
+        # 翻訳実行 (MODごとのテキストリストを渡す)
+        translated_map = prepare_translation(mod_data)
         if not translated_map:
             logging.warning("No translations were generated")
             return
 
         # 翻訳済みと未翻訳を分類
-        translated_targets = {
-            json_key: translated_map[original]
-            for json_key, original in targets.items()
-            if original in translated_map
-        }
-        untranslated_items = {
-            json_key: original
-            for json_key, original in targets.items()
-            if original not in translated_map
-        }
+        translated_targets = {}
+        untranslated_items = {}
+        
+        for mod_name, data in mod_data.items():
+            for i, text in enumerate(data["texts"]):
+                if text in translated_map:
+                    translated_targets[data["original_keys"][i]] = translated_map[text]
+                else:
+                    untranslated_items[data["original_keys"][i]] = text
 
         # 翻訳結果の保存
         output_file = os.path.join(RESOURCE_DIR, 'assets', 'japanese', 'lang', 'ja_jp.json')
